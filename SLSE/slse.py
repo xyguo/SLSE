@@ -89,9 +89,10 @@ class SLSE(object):
                                                        c * Y_ols[j] * VFpprime[j](Y_ols[j] * c)))
                    for j in range(n_links)]
 
+        # compute the scale constant for beta_nlr via Newton's method
         C = [newton(L[j], x0=0, fprime=L_prime[j]) for j in range(n_links)]
 
-        # compute the scale constant for beta_nlr
+        # final value of beta_nlr
         self.beta_nlr_ = beta_ols.T * C  # beta_nlr.shape=(n_links, n_features)
 
         return self
