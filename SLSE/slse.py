@@ -10,7 +10,8 @@ Code Author: Xiangyu Guo
 
 import numpy as np
 from sklearn.exceptions import NotFittedError
-from scipy.optimize import newton
+from scipy.optimize import newton, brentq
+import warnings
 
 
 class SLSE(object):
@@ -81,19 +82,25 @@ class SLSE(object):
         YZ = Z * Y.reshape(n_samples, 1)
         beta_ols = Sigma_inv.dot(X.T.dot(YZ))  # beta_ols.shape = (n_features, n_links)
         Y_ols = X.dot(beta_ols).T  # Y_ols.shape = (n_links, n_samples)
+
+        # create list of function derivatives and 2nd-order derivatives
         VFprime = [np.vectorize(f.grad) for f in F]
         VFpprime = [np.vectorize(f.ggrad) for f in F]
-        L = [lambda c: ((c / n_samples) * np.sum(VFprime[j](Y_ols[j] * c)) - 1)
-             for j in range(n_links)]
-        L_prime = [lambda c: ((1 / n_samples) * np.sum(VFprime[j](Y_ols[j] * c) +
+
+        def L_closure(j):
+            return lambda c: ((c / n_samples) * np.sum(VFprime[j](Y_ols[j] * c)) - 1)
+        L = [L_closure(j) for j in range(n_links)]
+
+        def Lprime_closure(j):
+            return lambda c: ((1 / n_samples) * np.sum(VFprime[j](Y_ols[j] * c) +
                                                        c * Y_ols[j] * VFpprime[j](Y_ols[j] * c)))
-                   for j in range(n_links)]
+        L_prime = [Lprime_closure(j) for j in range(n_links)]
 
         # compute the scale constant for beta_nlr via Newton's method
-        C = [newton(L[j], x0=0, fprime=L_prime[j]) for j in range(n_links)]
+        C = [_finding_root(L[j], fprime=L_prime[j]) for j in range(n_links)]
 
         # final value of beta_nlr
-        self.beta_nlr_ = beta_ols.T * C  # beta_nlr.shape=(n_links, n_features)
+        self.beta_nlr_ = (beta_ols * C).T  # beta_nlr.shape=(n_links, n_features)
 
         return self
 
@@ -113,3 +120,62 @@ def _sub_sampling_cov(X, s):
     subs_cov = np.linalg.inv(X_S.T.dot(X_S)) * s / n_samples
 
     return subs_cov
+
+
+def _finding_root(func, x0=None, fprime=None, interv0=None,
+                  method=None):
+    """Finding the root for equation func(x)=0
+
+    :param func: function accepting a real and return a real
+    :param x0: real number, the initial guess of
+    :param fprime: function, derivative of f
+    :param interv0: initial guess of the interval where the root resides
+    :param method: str in {'newton', 'brentq'}, default None.
+        If None, will first try Newton-Raphson then Brent.
+    :return root: real number, the found root
+    """
+    # decide the search range for x
+    if interv0 is not None:
+        left, right = interv0
+        assert left > -np.inf and right < np.inf
+        assert left < right
+    else:
+        left, right = -4096, 4096
+
+    # Use Newton-Raphson Method when derivative is available
+    if not (method == 'brentq' or fprime is None):
+        interv_len = min(1, (right - left) / 10)
+        mid = (right + left) / 2
+
+        if x0 is None:
+            x0 = np.random.uniform(low=mid - interv_len,
+                                   high=mid + interv_len)
+
+        # find a initial point that's not zero
+        for _ in range(11):
+            if np.abs(fprime(x0)) > 1e-3:
+                break
+            interv_len *= 2
+            interv_len = min((right - left) / 2, interv_len)
+            x0 = np.random.uniform(low=mid - interv_len,
+                                   high=mid + interv_len)
+
+        # run Newton-Raphson
+        root = newton(func, x0=x0, fprime=fprime)
+
+        # return if successfully find the root
+        if np.abs(func(root)) < 1e-3:
+            return root
+        elif method == 'newton':
+            warnings.warn("Newton-Raphson failed to find the root.\n",
+                          category=UserWarning)
+            return root
+
+    # Use Brent's Method to find the root
+    r = brentq(func, a=left, b=right, xtol=2e-6, rtol=2e-8,
+                         full_output=False, disp=False)
+    if np.abs(func(r)) > 1e-3:
+        warnings.warn("Brent's method failed to find the root",
+                      category=UserWarning)
+    return r
+
