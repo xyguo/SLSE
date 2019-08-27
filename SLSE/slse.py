@@ -26,10 +26,13 @@ class SLSE(object):
     :param cov_option: 1 or 2, ways to estimate the scaled "covariance".
     :param n_iters: int, maximum number of iterations
     :param tol: double, error tolerance in estimating the scaling constant c
+    :param sub_sample_frac: float, fraction of data used for estimating the covariance.
+        Only takes effect when cov_option=2
     :param groundtruth: array of shape=(n_links, n_features), true value of {\beta^*_i}_{i\in[k]}
     :param record_all_loss:
     """
     def __init__(self, cov_option=1, n_iters=100, tol=1e-3,
+                 sub_sample_frac=0.2,
                  groundtruth=None, record_all_loss=False):
         self.cov_option_ = cov_option
         if cov_option not in [1, 2]:
@@ -37,6 +40,8 @@ class SLSE(object):
         self.beta_nlr_ = None
         self.eta_ = tol
         self.n_iters_ = n_iters
+        assert 0 < sub_sample_frac <= 1
+        self.sub_sample_frac_ = sub_sample_frac
         self.record_loss_ = record_all_loss
         self.groundtruth_ = groundtruth
 
@@ -46,7 +51,7 @@ class SLSE(object):
             raise NotFittedError("Model hasn't been fitted")
         return self.beta_nlr_
 
-    def loss(self, groundtruth):
+    def loss(self, groundtruth, ord=2, relative=False):
         """Compare the estimated beta v.s. groundtruth beta
 
         :param groundtruth: array of shape=(n_links, n_features), true value of {\beta^*_i}_{i\in[k]}
@@ -54,7 +59,14 @@ class SLSE(object):
         """
         if self.beta_nlr_ is None:
             raise NotFittedError("Model hasn't been fitted")
-        return np.linalg.norm(self.beta_nlr_ - groundtruth, axis=1)
+        abs_loss = np.linalg.norm(self.beta_nlr_ - groundtruth,
+                                  ord=ord, axis=1)
+        if relative:
+            beta_norm = np.linalg.norm(groundtruth, ord=ord, axis=1)
+            rel_loss = abs_loss / beta_norm
+            return rel_loss
+        else:
+            return abs_loss
 
     def fit(self, X, Y, Z, F):
         """Fit the model on given input data.
@@ -76,7 +88,7 @@ class SLSE(object):
         if self.cov_option_ == 1:
             Sigma_inv = np.linalg.inv(X.T.dot(X))
         else:
-            Sigma_inv = _sub_sampling_cov(X, s=n_samples / 10)
+            Sigma_inv = _sub_sampling_cov(X, s=int(n_samples * self.sub_sample_frac_))
 
         # compute the ordinary least squares estimator beta_ols
         YZ = Z * Y.reshape(n_samples, 1)
@@ -84,8 +96,8 @@ class SLSE(object):
         Y_ols = X.dot(beta_ols).T  # Y_ols.shape = (n_links, n_samples)
 
         # create list of function derivatives and 2nd-order derivatives
-        VFprime = [np.vectorize(f.grad) for f in F]
-        VFpprime = [np.vectorize(f.ggrad) for f in F]
+        VFprime = [f.vgrad for f in F]
+        VFpprime = [f.vggrad for f in F]
 
         def L_closure(j):
             return lambda c: ((c / n_samples) * np.sum(VFprime[j](Y_ols[j] * c)) - 1)
@@ -123,7 +135,7 @@ def _sub_sampling_cov(X, s):
 
 
 def _finding_root(func, x0=None, fprime=None, interv0=None,
-                  method=None):
+                  method=None, max_iter=100):
     """Finding the root for equation func(x)=0
 
     :param func: function accepting a real and return a real
@@ -132,6 +144,7 @@ def _finding_root(func, x0=None, fprime=None, interv0=None,
     :param interv0: initial guess of the interval where the root resides
     :param method: str in {'newton', 'brentq'}, default None.
         If None, will first try Newton-Raphson then Brent.
+    :param max_iter: int, maximum number of iterations allowed. Default 100.
     :return root: real number, the found root
     """
     # decide the search range for x
@@ -161,7 +174,8 @@ def _finding_root(func, x0=None, fprime=None, interv0=None,
                                    high=mid + interv_len)
 
         # run Newton-Raphson
-        root = newton(func, x0=x0, fprime=fprime)
+        root = newton(func, x0=x0, fprime=fprime,
+                      maxiter=max_iter)
 
         # return if successfully find the root
         if np.abs(func(root)) < 1e-3:
@@ -173,7 +187,7 @@ def _finding_root(func, x0=None, fprime=None, interv0=None,
 
     # Use Brent's Method to find the root
     r = brentq(func, a=left, b=right, xtol=2e-6, rtol=2e-8,
-                         full_output=False, disp=False)
+               maxiter=max_iter, full_output=False, disp=False)
     if np.abs(func(r)) > 1e-3:
         warnings.warn("Brent's method failed to find the root",
                       category=UserWarning)
