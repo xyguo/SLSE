@@ -153,7 +153,25 @@ def _finding_root(func, x0=None, fprime=None, interv0=None,
         assert left > -np.inf and right < np.inf
         assert left < right
     else:
-        left, right = -4096, 4096
+        left, right = -0.05, 0.05
+        if func(0) < 0:
+            # This is specific for the SLSE task we deal with, where the
+            # function is always -1 at x=0. See Algorithm 1 in the paper.
+            while True:
+                if func(left) > 0:
+                    right = 0
+                    break
+                if func(right) > 0:
+                    left = 0
+                    break
+                if right > 2e12:
+                    warnings.warn("The function may not have a root.",
+                                  category=UserWarning)
+                    break
+                left *= 2
+                right *= 2
+        else:
+            left, right = -4096, 4096
 
     # Use Newton-Raphson Method when derivative is available
     if not (method == 'brentq' or fprime is None):
@@ -181,15 +199,21 @@ def _finding_root(func, x0=None, fprime=None, interv0=None,
         if np.abs(func(root)) < 1e-3:
             return root
         elif method == 'newton':
-            warnings.warn("Newton-Raphson failed to find the root.\n",
+            warnings.warn("Newton-Raphson failed to find the root. Should try other method.\n",
                           category=UserWarning)
             return root
 
     # Use Brent's Method to find the root
-    r = brentq(func, a=left, b=right, xtol=2e-6, rtol=2e-8,
-               maxiter=max_iter, full_output=False, disp=False)
-    if np.abs(func(r)) > 1e-3:
-        warnings.warn("Brent's method failed to find the root",
-                      category=UserWarning)
-    return r
+    try:
+        r = brentq(func, a=left, b=right, xtol=2e-6, rtol=2e-8,
+                   maxiter=max_iter, full_output=False, disp=False)
+        return r
+    except ValueError:
+        # If func(left) * func(right) > 0, Brent's Method will fail
+        warnings.warn("Brent's method failed to find the root. "
+                      "Fallback to gridsearch", category=UserWarning)
+        grid = np.arange(-10, 10, 0.05)
+        results = np.vectorize(func)(grid)
+        r = results[np.argmin(np.abs(results))]
+        return r
 
