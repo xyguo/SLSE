@@ -28,7 +28,7 @@ def gen_slcnr_obj(X, beta, F, Z=None, z_std=1.0, eps=None, eps_std=1.0):
         eps = np.random.normal(0, scale=eps_std, size=(n_samples,))
 
     Xbeta = X.dot(beta.T)  # Xbeta.shape = (n_samples, n_links)
-    VF = [np.vectorize(f.eval) for f in F]
+    VF = [f.veval for f in F]
     fXbeta = [VF[i](Xbeta[:, i]) for i in range(n_links)]
     fXbeta = np.vstack(fXbeta)  # fXbeta.shape = (n_links, n_samples)
     y = np.sum(Z.T * fXbeta, axis=0) + eps
