@@ -3,5 +3,5 @@
 This is the experiment code implementation of paper 
 > Scalable Estimating Stochastic Linear Combination of Non-linear Regressions, AAAI'20
 
-> Di Wang, X. Guo, Shi Li, Jinhui Xu
+> 647b769b017e5621e89758147fec31eb (Author info intentionally hidden for double-blind review)
 

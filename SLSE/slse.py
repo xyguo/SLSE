@@ -3,9 +3,9 @@
 Implementation for the main algorithm of paper
 
 `Scalable Estimating Stochastic Linear Combination of Non-linear Regressions`
-Author: Di Wang, Xiangyu Guo, Shi Li, Jinhui Xu
+Author: 647b769b017e5621e89758147fec31eb (intentionally hidden for double-blind review)
 
-Code Author: Xiangyu Guo
+Code Author: 647b769b017e5621e89758147fec31eb (intentionally hidden for double-blind review)
 """
 
 import numpy as np
