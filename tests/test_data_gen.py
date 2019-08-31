@@ -32,10 +32,15 @@ class TestUtils(unittest.TestCase):
              [-0.2, -0.05, -0.1]]
         )
         Y_true = np.array([-5.2, 1.175, -0.275, 2.75, -0.1])
+        X_copy = X.copy()
+        Z_copy = Z.copy()
 
         Y1 = gen_slcnr_obj(X, true_beta, F, Z, eps=np.zeros(5))
         Y2 = gen_slcnr_obj(X, true_beta, F, Z, eps_std=0.001)
 
         assert_array_equal(Y_true, Y1)
         assert_array_almost_equal(Y_true, Y2, decimal=2)
+
+        assert_array_equal(X_copy, X)
+        assert_array_equal(Z_copy, Z)
 
