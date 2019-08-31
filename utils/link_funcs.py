@@ -16,7 +16,7 @@ class LinkFunc(object, metaclass=ABCMeta):
         pass
 
     def veval(self, X):
-        """evaluate the function on all vectors in X"""
+        """evaluate the function on all elements in X"""
         return np.apply_along_axis(self.eval, axis=1, arr=X)
 
     def grad(self, x):
@@ -24,7 +24,7 @@ class LinkFunc(object, metaclass=ABCMeta):
         pass
 
     def vgrad(self, X):
-        """compute the first-order derivative for all vectors in X"""
+        """compute the first-order derivative for all elements in X"""
         return np.apply_along_axis(self.grad, axis=1, arr=X)
 
     def ggrad(self, x):
@@ -32,7 +32,7 @@ class LinkFunc(object, metaclass=ABCMeta):
         pass
 
     def vggrad(self, X):
-        """compute the second-order derivative for all vectors in X"""
+        """compute the second-order derivative for all elements in X"""
         return np.apply_along_axis(self.ggrad, axis=1, arr=X)
 
 
@@ -59,7 +59,7 @@ class PolynLink(LinkFunc):
                np.power(x, self.degree_ - 1)
 
     def vgrad(self, X):
-        """compute the first-order derivative for all vectors in X"""
+        """compute the first-order derivative for all elements in X"""
         if self.degree_ == 0:
             return 0
         return self.degree_ * self.coeff_ * \
@@ -72,7 +72,7 @@ class PolynLink(LinkFunc):
                self.coeff_ * np.power(x, self.degree_ - 2)
 
     def vggrad(self, X):
-        """compute the second-order derivative for all vectors in X"""
+        """compute the second-order derivative for all elements in X"""
         if self.degree_ <= 1:
             return 0
         return self.degree_ * (self.degree_ - 1) * \
@@ -93,16 +93,18 @@ class LogisticLink(LinkFunc):
         return fx * (1 - fx)
 
     def vgrad(self, X):
+        """compute the first-order derivative for all elements in X"""
         fx = expit(X)
         return fx * (1 - fx)
 
     def ggrad(self, x):
         fx = expit(x)
-        return (fx ** 2) * (2 * fx - 3) + fx
+        return fx * (1 - fx) * (1 - 2 * fx)
 
     def vggrad(self, X):
+        """compute the second-order derivative for all elements in X"""
         fx = expit(X)
-        return np.power(fx, 2) * (2 * fx - 3) + fx
+        return fx * (1 - fx) * (1 - 2 * fx)
 
 
 class LogexpLink(LinkFunc):
@@ -118,6 +120,7 @@ class LogexpLink(LinkFunc):
         return -expit(-x)
 
     def vgrad(self, X):
+        """compute the first-order derivative for all elements in X"""
         return -expit(-X)
 
     def ggrad(self, x):
@@ -125,6 +128,7 @@ class LogexpLink(LinkFunc):
         return g * (1 - g)
 
     def vggrad(self, X):
+        """compute the second-order derivative for all elements in X"""
         g = expit(X)
         return g * (1 - g)
 
