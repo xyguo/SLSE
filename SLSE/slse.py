@@ -55,6 +55,9 @@ class SLSE(object):
         """Compare the estimated beta v.s. groundtruth beta
 
         :param groundtruth: array of shape=(n_links, n_features), true value of {\beta^*_i}_{i\in[k]}
+        :param ord: object from {non-zero int, inf, -inf, 'fro', 'nuc'}, the type of norm used when calculate error.
+            For details see the document of numpy.linalg.norm
+        :param relative: If true, return the relative error.
         :return err: array of shape=(n_links,), l2-error for each beta^*_i
         """
         if self.beta_nlr_ is None:
@@ -74,10 +77,10 @@ class SLSE(object):
         :param X: array of shape=(n_samples, n_features), feature vector (variates) of training data
         :param Y: array of shape=(n_samples,), objective (response) of training data
         :param Z: array of shape=(n_samples, n_links), random coefficient for combining the link functions
-        :param F: list of len=n_links, of which each element f is an object offering the two following methods:
-            1. f.eval(x) -> real, which evaluate f at real number x
-            2. f.grad(x) -> real, which evaluate f's derivative at real number x
-            3. f.ggrad(x) -> real, which evaluate f's 2nd-order derivative at real number x
+        :param F: list of len=n_links, of which each element f is an object offering the three following methods:
+            1. f.veval(A) -> array of shape=(len(A),), that computes f at each element in A
+            2. f.vgrad(A) -> array of shape=(len(A),), that computes f's derivative at each element in A
+            3. f.vggrad(A) -> array of shape=(len(A),), that computes f's 2nd-order derivative at each element in A
         :return self:
         """
         n_samples, n_features = X.shape
