@@ -39,10 +39,15 @@ data_covs = {
     'sub-gaussian': lambda p: 1 / p
 }
 
-date = "20190830"
-link_func_type = 'mixed'
+date = "20190831"
+link_func_type = 'logistic'
 data_distr = 'sub-gaussian'
+sleep(4800)
 
+if data_distr == 'sub-gaussian':
+    err_norm = np.inf
+else:
+    err_norm = 2
 # number of different types of link function
 n_poly_links_frac, n_logistic_links_frac, n_logexp_links_frac = 0.3, 0.3, 0.4
 n_poly_links, n_logistic_links, n_logexp_links = None, None, None
@@ -100,7 +105,7 @@ for r in range(n_repeats):
             model = SLSE(cov_option=2, sub_sample_frac=n_sub_sample_frac)
             model.fit(X=X, Y=Y, Z=Z, F=F)
 
-            err_rates[r, i, j] = model.loss(groundtruth=true_beta,
+            err_rates[r, i, j] = model.loss(groundtruth=true_beta, ord=err_norm,
                                             relative=True).max()
             end = timer()
             print("------ {0} samples from {1} distribution: err = {2:.4f}, taking time={3:.2f}s"
@@ -151,7 +156,7 @@ for r in range(n_repeats):
             model = SLSE(cov_option=2, sub_sample_frac=n_sub_sample_frac)
             model.fit(X=X, Y=Y, Z=Z, F=F)
 
-            err_rates[r, i, j] = model.loss(groundtruth=true_beta,
+            err_rates[r, i, j] = model.loss(groundtruth=true_beta, ord=err_norm,
                                             relative=True).max()
             end = timer()
             print("------ {0} features with X~{1}: err = {2:.4f}, taking time={3:.2f}s"
@@ -203,7 +208,7 @@ for r in range(n_repeats):
             model = SLSE(cov_option=2, sub_sample_frac=n_sub_sample_frac)
             model.fit(X=X, Y=Y, Z=Z, F=F)
 
-            err_rates[r, i, j] = model.loss(groundtruth=true_beta,
+            err_rates[r, i, j] = model.loss(groundtruth=true_beta, ord=err_norm,
                                             relative=True).max()
             end = timer()
             print("------ {0} sub-sample-fraction with X~{1}: err = {2:.4f}, taking time={3:.2f}s"
