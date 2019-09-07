@@ -2,7 +2,7 @@
 """
 Wrapper for some link function definitions used in the experiment
 
-Code Author: 647b769b017e5621e89758147fec31eb (intentionally hidden for double-blind review)
+Code Author: Xiangyu Guo
 """
 from abc import ABCMeta, abstractmethod
 import numpy as np
